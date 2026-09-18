@@ -47,4 +47,7 @@ public interface DamExtClient {
 
     @PostMapping("/graph/getLoadRateIndicatorByUnitId")
     Map getLoadRateIndicatorByUnitId(@RequestParam Integer unitId);
+
+    @PostMapping("/graph/getAllEvent")
+    List<Map> getAllEvent(@RequestParam Integer nodeId);
 }
