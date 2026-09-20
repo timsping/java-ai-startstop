@@ -21,7 +21,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                     #{item}
                 </foreach>
             </if>
-            <if test="param.startTime != null and param.endTime != null">
+            <if test="param.startTime != null and param.endTime != null and param.startTime != '' and param.endTime != ''">
                 and start_time between #{param.startTime}::timestamp and #{param.endTime}::timestamp
             </if>
         </where>
@@ -42,17 +42,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             create_time from normal_event_result_report where result_pid = #{resultId}::uuid order by start_time
     </select>
     <select id="selectLastEvent" resultType="java.lang.String">
-        select n1.result_id from "public"."normal_event_result_report" n1
-        where
-        (SELECT start_time FROM "public"."normal_event_result_report" WHERE result_id=#{resultId}::uuid) > n1.start_time
-        and
-        n1.event_name = (SELECT event_name FROM "public"."normal_event_result_report" WHERE result_id=#{resultId}::uuid)
-        and event_type = '1'
-        ORDER BY n1.start_time desc limit 1
+        WITH target AS (
+        SELECT start_time, event_name
+            FROM "public"."normal_event_result_report"
+            WHERE result_id = #{resultId}::uuid
+        )
+        SELECT n1.result_id
+        FROM "public"."normal_event_result_report" n1
+        CROSS JOIN target
+        WHERE n1.event_name = target.event_name
+        AND n1.event_type = '1'
+        AND target.start_time > n1.start_time
+        ORDER BY n1.start_time DESC
+        LIMIT 1
     </select>
     <select id="materialDetails" resultType="java.util.Map">
-        select * from material_record where material_record.event_record_id = #{resultId}::uuid or
-            material_record.event_pid = #{resultId}::uuid
+        select m.* , n.event_name from material_record m left join normal_event_result_report n on n.result_id = m.event_record_id where m.event_record_id = #{resultId}::uuid or
+            m.event_pid = #{resultId}::uuid
     </select>
     <select id="startStopRecord" parameterType="com.changgeng.model.StartStopQueryDTO" resultType="map">
         select n1.result_id , n1.event_name from "public"."normal_event_result_report" n1
