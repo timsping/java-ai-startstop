@@ -52,5 +52,14 @@ public class StartStopController {
     public Result startStopRecord(@RequestBody StartStopQueryDTO startStopQueryDTO){
         return startStopService.startStopRecord(startStopQueryDTO);
     }
+
+    /**
+     * 阶段查询
+     * @return
+     */
+    @PostMapping("/stage/record")
+    public Result stageRecord(@RequestBody StartStopQueryDTO startStopQueryDTO){
+        return startStopService.stageRecord(startStopQueryDTO);
+    }
 }
 

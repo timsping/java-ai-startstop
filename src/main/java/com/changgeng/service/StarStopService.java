@@ -5,15 +5,15 @@ import com.changgeng.client.DamExtClient;
 import com.changgeng.common.result.Result;
 import com.changgeng.mapper.StartStopMapper;
 import com.changgeng.model.StartStopQueryDTO;
+import com.changgeng.pojo.SourceRecord;
+import com.changgeng.tree.TreeBuildUtil;
+import com.changgeng.tree.TreeNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,5 +73,24 @@ public class StarStopService {
         List<Integer> eventIds = allEvent.stream().map(e -> Integer.parseInt(e.get("eventId").toString())).collect(Collectors.toList());
         startStopQueryDTO.setEventIds(eventIds);
         return Result.success(startStopMapper.startStopRecord(startStopQueryDTO));
+    }
+
+    public Result stageRecord(StartStopQueryDTO startStopQueryDTO) {
+        log.error("stageRecord param {}" , JSON.toJSONString(startStopQueryDTO));
+        List<Map> allEvent = damExtClient.getAllEvent(startStopQueryDTO.getNodeId());
+        if(!CollectionUtils.isEmpty(allEvent)){
+            for (Map map : allEvent) {
+                String eventName = map.get("eventName").toString();
+                if(eventName.contains(startStopQueryDTO.getEventName())){
+                    Integer eventId = (Integer) map.get("eventId");
+                    List<Map> allEventList = damExtClient.getAllEventList(startStopQueryDTO.getNodeId(), eventId);
+                    List<SourceRecord> sourceRecordList = JSON.parseArray(JSON.toJSONString(allEventList), SourceRecord.class);
+                    List<TreeNode> treeNodes = TreeBuildUtil.buildTree(sourceRecordList);
+                    return Result.success(treeNodes);
+                }
+                break;
+            }
+        }
+        return Result.error("操作失败");
     }
 }
