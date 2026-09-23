@@ -2,7 +2,7 @@ package com.changgeng.controller;
 
 import com.changgeng.common.result.Result;
 import com.changgeng.model.StartStopQueryDTO;
-import com.changgeng.service.StarStopService;
+import com.changgeng.service.StartStopService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +14,7 @@ import javax.annotation.Resource;
 public class StartStopController {
 
     @Resource
-    private StarStopService startStopService;
+    private StartStopService startStopService;
 
     /**
      * 统计指定时间范围内启动次数、停机次数，并补充累计运行时长、停机时长

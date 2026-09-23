@@ -9,21 +9,16 @@ import com.changgeng.pojo.SourceRecord;
 import com.changgeng.tree.TreeBuildUtil;
 import com.changgeng.tree.TreeNode;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.utils.Lists;
-import org.apache.ibatis.util.MapUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-public class StarStopService {
+public class StartStopService {
     @Resource
     private StartStopMapper startStopMapper;
     @Resource
@@ -31,13 +26,13 @@ public class StarStopService {
 
 
     public Result startStopStatic(StartStopQueryDTO startStopStatic) {
-        log.error("startStopStatic param {}" , JSON.toJSONString(startStopStatic));
+        log.info("startStopStatic param {}" , JSON.toJSONString(startStopStatic));
         //查询指定机组下整体事件
         List<Map> allEvent = damExtClient.getAllEvent(startStopStatic.getNodeId());
         if(CollectionUtils.isEmpty(allEvent)){
             return Result.error("未查询到相关的启停记录");
         }
-        log.error("查询到事件数据 {}" , JSON.toJSONString(allEvent));
+        log.info("查询到事件数据 {}" , JSON.toJSONString(allEvent));
         List<Integer> eventIds = allEvent.stream().map(e -> Integer.parseInt(e.get("eventId").toString())).collect(Collectors.toList());
         startStopStatic.setEventIds(eventIds);
         List<Map> list = startStopMapper.selectAllEvent(startStopStatic);
@@ -47,7 +42,7 @@ public class StarStopService {
     }
 
     public Result startStopDetails(StartStopQueryDTO startStopQueryDTO) {
-        log.error("startStopDetails param {}" , JSON.toJSONString(startStopQueryDTO));
+        log.info("startStopDetails param {}" , JSON.toJSONString(startStopQueryDTO));
         String resultId = startStopQueryDTO.getResultId();
         List<Map> list = startStopMapper.startStopDetails(resultId);
         list = list.stream().peek(map->map.put("childrenEvent" , startStopMapper.startStopDetails(map.get("result_id").toString()))).collect(Collectors.toList());
@@ -56,7 +51,7 @@ public class StarStopService {
 
     public Result materialDetails(StartStopQueryDTO startStopQueryDTO) {
         Map<String , Object> result = new LinkedHashMap<>();
-        log.error("materialDetails param {}" , JSON.toJSONString(startStopQueryDTO));
+        log.info("materialDetails param {}" , JSON.toJSONString(startStopQueryDTO));
         //本次物料信息
         List<Map> currentMaterialList = startStopMapper.materialDetails(startStopQueryDTO.getResultId());
         result.put("currentMaterialList" , currentMaterialList);
@@ -70,7 +65,7 @@ public class StarStopService {
     }
 
     public Result startStopRecord(StartStopQueryDTO startStopQueryDTO) {
-        log.error("startStopRecord param {}" , JSON.toJSONString(startStopQueryDTO));
+        log.info("startStopRecord param {}" , JSON.toJSONString(startStopQueryDTO));
         List<Map> allEvent = damExtClient.getAllEvent(startStopQueryDTO.getNodeId());
         if(CollectionUtils.isEmpty(allEvent)){
             return Result.error("未查询到相关的启停记录");
@@ -81,7 +76,7 @@ public class StarStopService {
     }
 
     public Result stageRecord(StartStopQueryDTO startStopQueryDTO) {
-        log.error("stageRecord param {}" , JSON.toJSONString(startStopQueryDTO));
+        log.info("stageRecord param {}" , JSON.toJSONString(startStopQueryDTO));
         List<Map> allEvent = damExtClient.getAllEvent(startStopQueryDTO.getNodeId());
         if(!CollectionUtils.isEmpty(allEvent)){
             for (Map map : allEvent) {
@@ -93,24 +88,29 @@ public class StarStopService {
                     Map<String, Map> selectCurrentStartStop = startStopMapper.selectCurrentStartStop(eventId);
                     List<SourceRecord> sourceRecordList = JSON.parseArray(JSON.toJSONString(allEventList), SourceRecord.class);
                     List<TreeNode> treeNodes = TreeBuildUtil.buildTree(sourceRecordList);
-                    Map<String,Map> defMap1 = new HashMap(){{
+                    Map<String,Map> defaultMap = new HashMap(){{
                         put("eventStatus" ,"未开始");
                         put("minute" ,0d);
                     }};
-                    for (TreeNode treeNode : treeNodes) {
-                        treeNode.setStartDatas(getCurrentStartMode(selectCurrentStartStop.getOrDefault(treeNode.getCode() , defMap1)));
-                        for (TreeNode child : treeNode.getChildren()) {
-                            child.setStartDatas(selectCurrentStartStop.getOrDefault(child.getCode() , defMap1));
-                            for (TreeNode childChild : child.getChildren()) {
-                                childChild.setStartDatas( selectCurrentStartStop.getOrDefault(childChild.getCode() , defMap1));
-                            }
-                        }
-                    }
+                    fillTreeNodeStartData(treeNodes, selectCurrentStartStop, defaultMap);
                     return Result.success(treeNodes);
                 }
             }
         }
         return Result.error("操作失败");
+    }
+
+    private void fillTreeNodeStartData(List<TreeNode> treeNodes,
+                                       Map<String, Map> currentStartStopMap,
+                                       Map defaultMap) {
+        if (CollectionUtils.isEmpty(treeNodes)) {
+            return;
+        }
+        for (TreeNode treeNode : treeNodes) {
+            Map<String, Object> nodeData = currentStartStopMap.getOrDefault(treeNode.getCode(), defaultMap);
+            treeNode.setStartDatas(getCurrentStartMode(nodeData));
+            fillTreeNodeStartData(treeNode.getChildren(), currentStartStopMap, defaultMap);
+        }
     }
 
     private Map getCurrentStartMode(Map data) {
