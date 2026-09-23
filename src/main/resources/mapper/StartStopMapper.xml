@@ -24,6 +24,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="param.startTime != null and param.endTime != null and param.startTime != '' and param.endTime != ''">
                 and start_time between #{param.startTime}::timestamp and #{param.endTime}::timestamp
             </if>
+            and end_time is not null
         </where>
     </select>
 
@@ -69,5 +70,29 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 #{item}
             </foreach>
         </if>  order by n1.start_time desc limit 10
+    </select>
+    <select id="selectCurrentStartStop" resultType="java.util.Map">
+        WITH RECURSIVE tree AS (
+            SELECT *
+            FROM normal_event_result
+            WHERE result_id = (select n.result_id from normal_event_result n where n.event_id=#{eventId} and n.start_time is not null and n.end_time is null order by n.start_time desc limit 1)
+
+        UNION ALL
+        SELECT child.*
+        FROM normal_event_result child
+                 INNER JOIN tree parent ON child.result_pid = parent.result_id
+            )
+        SELECT
+            tree.*,
+            EXTRACT(EPOCH FROM ((COALESCE(end_time, start_time)) - (start_time))) / 60 AS minute,
+            CASE
+                WHEN end_time IS NULL THEN '进行中'
+                ELSE '已完成'
+                END AS "eventStatus"
+        FROM tree
+        ORDER BY start_time ;
+    </select>
+    <select id="getCurrentStartMode" resultType="java.util.Map">
+        select * from basic_event_result b where b.all_event_code = #{eventCode} and b.occur_time >= #{startTime} ORDER BY b.occur_time limit 1
     </select>
 </mapper>

@@ -54,4 +54,7 @@ public interface DamExtClient {
 
     @PostMapping("/graph/getAllEventList")
     List<Map> getAllEventList(@RequestParam Integer unitId , @RequestParam Integer eventId);
+
+    @PostMapping("/graph/getNode")
+    List<Map> getNode(@RequestParam Integer nodeId);
 }

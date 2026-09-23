@@ -18,4 +18,6 @@ public class SourceRecord {
     private Long childEventId;
     /** 二级子节点id */
     private Long childEventId1;
+
+    private String eventStatus;
 }

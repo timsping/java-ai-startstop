@@ -1,9 +1,11 @@
 package com.changgeng.mapper;
 
 import com.changgeng.model.StartStopQueryDTO;
+import org.apache.ibatis.annotations.MapKey;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -21,4 +23,9 @@ public interface StartStopMapper {
     String selectLastEvent(@Param("resultId") String resultId);
 
     List<Map> startStopRecord(@Param("param") StartStopQueryDTO startStopQueryDTO);
+
+    @MapKey("event_code")
+    Map<String,Map> selectCurrentStartStop(@Param("eventId") Integer eventId);
+
+    Map getCurrentStartMode(@Param("eventCode") String eventCode , @Param("startTime")Date startTime);
 }

@@ -9,10 +9,15 @@ import com.changgeng.pojo.SourceRecord;
 import com.changgeng.tree.TreeBuildUtil;
 import com.changgeng.tree.TreeNode;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Lists;
+import org.apache.ibatis.util.MapUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -84,13 +89,41 @@ public class StarStopService {
                 if(eventName.contains(startStopQueryDTO.getEventName())){
                     Integer eventId = (Integer) map.get("eventId");
                     List<Map> allEventList = damExtClient.getAllEventList(startStopQueryDTO.getNodeId(), eventId);
+                    //获取正在进行中的整体事件
+                    Map<String, Map> selectCurrentStartStop = startStopMapper.selectCurrentStartStop(eventId);
                     List<SourceRecord> sourceRecordList = JSON.parseArray(JSON.toJSONString(allEventList), SourceRecord.class);
                     List<TreeNode> treeNodes = TreeBuildUtil.buildTree(sourceRecordList);
+                    Map<String,Map> defMap1 = new HashMap(){{
+                        put("eventStatus" ,"未开始");
+                        put("minute" ,0d);
+                    }};
+                    for (TreeNode treeNode : treeNodes) {
+                        treeNode.setStartDatas(getCurrentStartMode(selectCurrentStartStop.getOrDefault(treeNode.getCode() , defMap1)));
+                        for (TreeNode child : treeNode.getChildren()) {
+                            child.setStartDatas(selectCurrentStartStop.getOrDefault(child.getCode() , defMap1));
+                            for (TreeNode childChild : child.getChildren()) {
+                                childChild.setStartDatas( selectCurrentStartStop.getOrDefault(childChild.getCode() , defMap1));
+                            }
+                        }
+                    }
                     return Result.success(treeNodes);
                 }
-                break;
             }
         }
         return Result.error("操作失败");
+    }
+
+    private Map getCurrentStartMode(Map data) {
+        String eventCode = data.get("event_code").toString();
+        Date startTime = (Date) data.get("start_time");
+        Map currentStartMode = startStopMapper.getCurrentStartMode(eventCode, startTime);
+        if(!CollectionUtils.isEmpty(currentStartMode)){
+            data.put("currentStartMode",currentStartMode.get("event_name"));
+            Integer eventId = (Integer) currentStartMode.get("event_id");
+            List<Map> nodes = damExtClient.getNode(eventId);
+            String currentStartModeDesc = ((Map) nodes.get(0).get("n")).get("公式说明").toString();
+            data.put("currentStartModeDesc" , currentStartModeDesc);
+        }
+        return data;
     }
 }
