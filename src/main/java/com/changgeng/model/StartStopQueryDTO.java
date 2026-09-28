@@ -12,4 +12,5 @@ public class StartStopQueryDTO {
     private List<Integer> eventIds;
     private String resultId;
     private String eventName;
+    private String condition;
 }

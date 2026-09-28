@@ -61,5 +61,14 @@ public class StartStopController {
     public Result stageRecord(@RequestBody StartStopQueryDTO startStopQueryDTO){
         return startStopService.stageRecord(startStopQueryDTO);
     }
+
+    /**
+     * 指定阶段核心参数当前值、标准值和判断结果
+     * @return
+     */
+    @PostMapping("/startStopCondition")
+    public Result startStopCondition(@RequestBody StartStopQueryDTO startStopQueryDTO){
+        return startStopService.startStopCondition(startStopQueryDTO);
+    }
 }
 

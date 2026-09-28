@@ -100,6 +100,18 @@ public class StartStopService {
         return Result.error("操作失败");
     }
 
+
+    public Result startStopCondition(StartStopQueryDTO startStopQueryDTO) {
+        log.info("startStopCondition param {}" , JSON.toJSONString(startStopQueryDTO));
+        Integer nodeId = startStopQueryDTO.getNodeId();
+        String condition = startStopQueryDTO.getCondition();
+        List<Map> startStopCondition = startStopMapper.startStopCondition(nodeId, condition);
+        if(CollectionUtils.isEmpty(startStopCondition)){
+            return Result.error("未查询到相关的判定记录");
+        }
+        return Result.success(startStopCondition);
+    }
+
     private void fillTreeNodeStartData(List<TreeNode> treeNodes,
                                        Map<String, Map> currentStartStopMap,
                                        Map defaultMap) {
@@ -108,7 +120,9 @@ public class StartStopService {
         }
         for (TreeNode treeNode : treeNodes) {
             Map<String, Object> nodeData = currentStartStopMap.getOrDefault(treeNode.getCode(), defaultMap);
-            treeNode.setStartDatas(getCurrentStartMode(nodeData));
+            if(nodeData.containsKey("event_type") && nodeData.get("event_type").equals("1")){
+                treeNode.setStartDatas(getCurrentStartMode(nodeData));
+            }
             fillTreeNodeStartData(treeNode.getChildren(), currentStartStopMap, defaultMap);
         }
     }
@@ -126,4 +140,5 @@ public class StartStopService {
         }
         return data;
     }
+
 }

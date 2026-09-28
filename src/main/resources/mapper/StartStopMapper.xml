@@ -95,4 +95,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="getCurrentStartMode" resultType="java.util.Map">
         select * from basic_event_result b where b.all_event_code = #{eventCode} and b.occur_time >= #{startTime} ORDER BY b.occur_time limit 1
     </select>
+    <select id="startStopCondition" resultType="java.util.Map">
+        select * from startstop_standard_config where node_id = #{nodeId} and type = #{condition}
+    </select>
 </mapper>
