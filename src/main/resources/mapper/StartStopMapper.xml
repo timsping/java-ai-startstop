@@ -98,4 +98,60 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="startStopCondition" resultType="java.util.Map">
         select * from startstop_standard_config where node_id = #{nodeId} and type = #{condition}
     </select>
+
+    <select id="eventStatus" resultType="java.util.Map">
+        WITH RECURSIVE all_result AS (
+        SELECT 'result' AS source, result_id, result_pid, event_name
+        FROM normal_event_result
+        UNION ALL
+        SELECT 'result_report' AS source, result_id, result_pid, event_name
+        FROM normal_event_result_report
+        ),
+        all_basic AS (
+        SELECT 'result' AS source, result_id, result_pid, event_name, event_id
+        FROM basic_event_result
+        UNION ALL
+        SELECT 'result_report' AS source, result_id, result_pid, event_name, event_id
+        FROM basic_event_result_report
+        ),
+        -- 向上计算真实起始层级（1:启停, 2:过程, 3:子过程）
+        ancestor AS (
+        SELECT source, result_id, result_pid, 1 AS depth
+        FROM all_result
+        WHERE result_id = #{resultId}::uuid
+        UNION ALL
+        SELECT a.source, a.result_id, a.result_pid, anc.depth + 1
+        FROM all_result a
+        JOIN ancestor anc ON a.source = anc.source AND a.result_id = anc.result_pid
+        ),
+        rec AS (
+        SELECT a.source, a.result_id, a.result_pid, a.event_name, COALESCE((SELECT MAX(depth) FROM ancestor), 1) AS level_no
+        FROM all_result a
+        WHERE a.result_id = #{resultId}::uuid
+        UNION ALL
+        SELECT c.source, c.result_id, c.result_pid, c.event_name, p.level_no + 1
+        FROM rec p
+        JOIN all_result c ON c.source = p.source AND c.result_pid = p.result_id
+        )
+        SELECT 
+            result_id, 
+            parent_result_id, 
+            event_name AS "eventName",
+            event_id AS "eventId",
+            CASE level_no 
+                WHEN 1 THEN '启停' 
+                WHEN 2 THEN '过程' 
+                WHEN 3 THEN '子过程' 
+                ELSE '基本事件' 
+            END AS "levelType"
+        FROM (
+            SELECT level_no, result_id, result_pid AS parent_result_id, event_name, NULL::bigint AS event_id
+            FROM rec
+            UNION ALL
+            SELECT 4 AS level_no, b.result_id, r.result_id, b.event_name, b.event_id
+            FROM rec r
+            JOIN all_basic b ON b.source = r.source AND b.result_pid = r.result_id
+        ) t
+        ORDER BY level_no, parent_result_id, result_id;
+    </select>
 </mapper>

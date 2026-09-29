@@ -70,5 +70,17 @@ public class StartStopController {
     public Result startStopCondition(@RequestBody StartStopQueryDTO startStopQueryDTO){
         return startStopService.startStopCondition(startStopQueryDTO);
     }
+
+    /**
+     * 启停事件查询(事件)
+     * @param resultId 所有事件下的所有状况
+     * @return
+     */
+    @PostMapping("/event/status")
+    public Result eventStatus(@RequestParam String resultId
+    ){
+        return startStopService.eventStatus(resultId);
+    }
+
 }
 

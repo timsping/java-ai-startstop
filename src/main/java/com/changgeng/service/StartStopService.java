@@ -141,4 +141,46 @@ public class StartStopService {
         return data;
     }
 
+    public Result eventStatus(String resultId) {
+        log.info("eventStatus param resultId: {}", resultId);
+        List<Map> list = startStopMapper.eventStatus(resultId);
+        if (CollectionUtils.isEmpty(list)) {
+            return Result.success(null);
+        }
+
+        Map<String, Map<String, Object>> nodeMap = new LinkedHashMap<>();
+        list.forEach(item -> {
+            item.put("children", new ArrayList<>());
+            nodeMap.put(item.get("result_id").toString(), item);
+        });
+
+        Map<String, Object> root = null;
+        for (Map<String, Object> node : nodeMap.values()) {
+            Object pid = node.get("parent_result_id");
+            Map<String, Object> parent = pid != null ? nodeMap.get(pid.toString()) : null;
+            if (parent != null && !node.get("result_id").toString().equalsIgnoreCase(resultId)) {
+                ((List) parent.get("children")).add(node);
+            } else if (root == null) {
+                root = node;
+            }
+        }
+
+        nodeMap.values().parallelStream().forEach(node -> {
+            if (node.get("eventId") != null) {
+                try {
+                    List<Map> nodes = damExtClient.getNode(Integer.parseInt(node.get("eventId").toString()));
+                    if (!CollectionUtils.isEmpty(nodes) && nodes.get(0).get("n") instanceof Map) {
+                        node.put("formulaDesc", ((Map) nodes.get(0).get("n")).get("公式说明"));
+                    }
+                } catch (Exception ignored) {}
+                node.remove("children");
+            }
+            node.remove("result_id");
+            node.remove("parent_result_id");
+            node.remove("eventId");
+        });
+
+        return Result.success(root);
+    }
+
 }

@@ -30,4 +30,6 @@ public interface StartStopMapper {
     Map getCurrentStartMode(@Param("eventCode") String eventCode , @Param("startTime")Date startTime);
 
     List<Map> startStopCondition(@Param("nodeId") Integer nodeId, @Param("condition") String condition);
+
+    List<Map> eventStatus(@Param("resultId") String resultId);
 }
