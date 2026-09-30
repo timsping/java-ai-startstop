@@ -154,4 +154,71 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ) t
         ORDER BY level_no, parent_result_id, result_id;
     </select>
+
+    <select id="eventReport" resultType="java.util.Map">
+        SELECT
+            par.point_code,
+            p.point_desc,
+            par.first_time,
+            par.last_time,
+            par.alarm_type,
+            p.unit,
+            par.value,
+            par.closed,
+            se.event_name AS start_event_name,
+            ee.event_name AS end_event_name
+        FROM point_alarm_record par
+        LEFT JOIN point p ON p.point_code = par.point_code
+        LEFT JOIN (
+            SELECT event_code, event_name FROM basic_event_result_report
+            UNION
+            SELECT event_code, event_name FROM basic_event_result
+        ) se ON se.event_code = p.start_event
+        LEFT JOIN (
+            SELECT event_code, event_name FROM basic_event_result_report
+            UNION
+            SELECT event_code, event_name FROM basic_event_result
+        ) ee ON ee.event_code = p.end_event
+        WHERE par.first_time >= #{startTime}::timestamp
+            AND par.first_time &lt;= #{endTime}::timestamp
+            AND p.parent_event IN
+                <foreach collection="eventCode" item="ec" open="(" separator="," close=")">
+                    #{ec}
+                </foreach>
+        ORDER BY par.first_time
+    </select>
+    <select id="selectEventDetailsByResultId" resultType="java.util.Map">
+        SELECT
+            event_code,
+            start_time,
+            end_time,
+            result_id,
+            event_name,
+            event_id
+        FROM normal_event_result_report
+        WHERE result_id = #{resultId}::uuid
+        UNION ALL
+            SELECT
+            event_code,
+            start_time,
+            end_time,
+            result_id,
+            event_name,
+            event_id
+        FROM normal_event_result
+        WHERE result_id = #{resultId}::uuid
+    </select>
+    <select id="selectMaterialStatistics" resultType="java.util.Map">
+        SELECT
+            material_name,
+            material_unit,
+            ROUND(AVG(material_value::numeric), 2) AS avg_value,
+            COUNT(*)                               AS cnt,
+            MIN(material_value::numeric)           AS min_value,
+            MAX(material_value::numeric)           AS max_value
+        FROM material_record mr
+        WHERE mr.event_pid IS NULL
+        GROUP BY material_name, material_unit
+        ORDER BY material_name, material_unit;
+    </select>
 </mapper>

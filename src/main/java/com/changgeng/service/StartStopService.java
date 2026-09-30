@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -120,9 +123,7 @@ public class StartStopService {
         }
         for (TreeNode treeNode : treeNodes) {
             Map<String, Object> nodeData = currentStartStopMap.getOrDefault(treeNode.getCode(), defaultMap);
-            if(nodeData.containsKey("event_type") && nodeData.get("event_type").equals("1")){
-                treeNode.setStartDatas(getCurrentStartMode(nodeData));
-            }
+            treeNode.setStartDatas(getCurrentStartMode(nodeData));
             fillTreeNodeStartData(treeNode.getChildren(), currentStartStopMap, defaultMap);
         }
     }
@@ -183,4 +184,39 @@ public class StartStopService {
         return Result.success(root);
     }
 
+    public Result eventReport(StartStopQueryDTO startStopQueryDTO) {
+        log.info("eventReport param startTime: {}, endTime: {}, resultId: {}", startStopQueryDTO.getStartTime(), startStopQueryDTO.getEndTime(), startStopQueryDTO.getResultId());
+        List<Map> events = startStopMapper.selectEventDetailsByResultId(startStopQueryDTO.getResultId());
+        if (CollectionUtils.isEmpty(events)) return Result.success(Collections.emptyList());
+
+        List<String> eventCode = events.stream().map(map -> map.get("event_code").toString()).collect(Collectors.toList());
+        List<Map> result = startStopMapper.eventReport(startStopQueryDTO.getStartTime(), startStopQueryDTO.getEndTime(), eventCode);
+        return Result.success(result);
+    }
+
+    public Result bestRecord(Integer unitId) {
+        log.info("bestRecord param unitId: {}", unitId);
+        StartStopQueryDTO startStopQueryDTO = new StartStopQueryDTO();
+        startStopQueryDTO.setNodeId(unitId);
+        List<Map> allRecord = (List<Map>) startStopStatic(startStopQueryDTO).getData();
+        Map<String, Map<String, Object>> result = allRecord.stream()
+                .map(m -> (Map<String, Object>) m)
+                .filter(m -> m.get("startMode") != null)
+                .collect(Collectors.toMap(
+                        m -> (String) m.get("startMode"),
+                        Function.identity(),
+                        (m1, m2) -> {
+                            long d1 = ((Date) m1.get("end_time")).getTime()
+                                    - ((Date) m1.get("create_time")).getTime();
+                            long d2 = ((Date) m2.get("end_time")).getTime()
+                                    - ((Date) m2.get("create_time")).getTime();
+                            return d1 <= d2 ? m1 : m2;
+                        }
+                ));
+        return Result.success(result);
+    }
+
+    public Result materialStatistics() {
+        return Result.success(startStopMapper.selectMaterialStatistics());
+    }
 }
