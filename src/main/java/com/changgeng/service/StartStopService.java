@@ -129,6 +129,9 @@ public class StartStopService {
     }
 
     private Map getCurrentStartMode(Map data) {
+        if (data == null || data.get("event_code") == null || data.get("start_time") == null) {
+            return new HashMap<>(data != null ? data : Collections.emptyMap());
+        }
         String eventCode = data.get("event_code").toString();
         Date startTime = (Date) data.get("start_time");
         Map currentStartMode = startStopMapper.getCurrentStartMode(eventCode, startTime);
@@ -199,19 +202,29 @@ public class StartStopService {
         StartStopQueryDTO startStopQueryDTO = new StartStopQueryDTO();
         startStopQueryDTO.setNodeId(unitId);
         List<Map> allRecord = (List<Map>) startStopStatic(startStopQueryDTO).getData();
-        Map<String, Map<String, Object>> result = allRecord.stream()
+        if (CollectionUtils.isEmpty(allRecord)) {
+            return Result.success(Collections.emptyMap());
+        }
+
+        Map<String, List<Map<String, Object>>> result = allRecord.stream()
                 .map(m -> (Map<String, Object>) m)
-                .filter(m -> m.get("startMode") != null)
-                .collect(Collectors.toMap(
-                        m -> (String) m.get("startMode"),
-                        Function.identity(),
-                        (m1, m2) -> {
-                            long d1 = ((Date) m1.get("end_time")).getTime()
-                                    - ((Date) m1.get("create_time")).getTime();
-                            long d2 = ((Date) m2.get("end_time")).getTime()
-                                    - ((Date) m2.get("create_time")).getTime();
-                            return d1 <= d2 ? m1 : m2;
-                        }
+                .filter(m -> m.get("event_name") != null)
+                .collect(Collectors.groupingBy(
+                        m -> (String) m.get("event_name"),
+                        Collectors.collectingAndThen(
+                                Collectors.toMap(
+                                        m -> Optional.ofNullable(m.get("startMode")).map(Object::toString).orElse("未知"),
+                                        Function.identity(),
+                                        (m1, m2) -> {
+                                            long d1 = ((Date) m1.get("end_time")).getTime()
+                                                    - ((Date) m1.get("create_time")).getTime();
+                                            long d2 = ((Date) m2.get("end_time")).getTime()
+                                                    - ((Date) m2.get("create_time")).getTime();
+                                            return d1 <= d2 ? m1 : m2;
+                                        }
+                                ),
+                                modeMap -> new ArrayList<>(modeMap.values())
+                        )
                 ));
         return Result.success(result);
     }
