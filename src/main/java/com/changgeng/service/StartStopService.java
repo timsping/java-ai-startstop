@@ -14,7 +14,10 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -122,14 +125,15 @@ public class StartStopService {
         }
         for (TreeNode treeNode : treeNodes) {
             Map<String, Object> nodeData = currentStartStopMap.getOrDefault(treeNode.getCode(), defaultMap);
-            if(nodeData.containsKey("event_type") && nodeData.get("event_type").equals("1")){
-                treeNode.setStartDatas(getCurrentStartMode(nodeData));
-            }
+            treeNode.setStartDatas(getCurrentStartMode(nodeData));
             fillTreeNodeStartData(treeNode.getChildren(), currentStartStopMap, defaultMap);
         }
     }
 
     private Map getCurrentStartMode(Map data) {
+        if (data == null || data.get("event_code") == null || data.get("start_time") == null) {
+            return new HashMap<>(data != null ? data : Collections.emptyMap());
+        }
         String eventCode = data.get("event_code").toString();
         Date startTime = (Date) data.get("start_time");
         Map currentStartMode = startStopMapper.getCurrentStartMode(eventCode, startTime);
@@ -185,6 +189,51 @@ public class StartStopService {
         return Result.success(root);
     }
 
+    public Result eventReport(StartStopQueryDTO startStopQueryDTO) {
+        log.info("eventReport param startTime: {}, endTime: {}, resultId: {}", startStopQueryDTO.getStartTime(), startStopQueryDTO.getEndTime(), startStopQueryDTO.getResultId());
+        List<Map> events = startStopMapper.selectEventDetailsByResultId(startStopQueryDTO.getResultId());
+        if (CollectionUtils.isEmpty(events)) return Result.success(Collections.emptyList());
+
+        List<String> eventCode = events.stream().map(map -> map.get("event_code").toString()).collect(Collectors.toList());
+        List<Map> result = startStopMapper.eventReport(startStopQueryDTO.getStartTime(), startStopQueryDTO.getEndTime(), eventCode);
+        return Result.success(result);
+    }
+
+    public Result bestRecord(Integer unitId) {
+        log.info("bestRecord param unitId: {}", unitId);
+        StartStopQueryDTO startStopQueryDTO = new StartStopQueryDTO();
+        startStopQueryDTO.setNodeId(unitId);
+        List<Map> allRecord = (List<Map>) startStopStatic(startStopQueryDTO).getData();
+        if (CollectionUtils.isEmpty(allRecord)) {
+            return Result.success(Collections.emptyMap());
+        }
+
+        Map<String, List<Map<String, Object>>> result = allRecord.stream()
+                .map(m -> (Map<String, Object>) m)
+                .filter(m -> m.get("event_name") != null)
+                .collect(Collectors.groupingBy(
+                        m -> (String) m.get("event_name"),
+                        Collectors.collectingAndThen(
+                                Collectors.toMap(
+                                        m -> Optional.ofNullable(m.get("startMode")).map(Object::toString).orElse("未知"),
+                                        Function.identity(),
+                                        (m1, m2) -> {
+                                            long d1 = ((Date) m1.get("end_time")).getTime()
+                                                    - ((Date) m1.get("create_time")).getTime();
+                                            long d2 = ((Date) m2.get("end_time")).getTime()
+                                                    - ((Date) m2.get("create_time")).getTime();
+                                            return d1 <= d2 ? m1 : m2;
+                                        }
+                                ),
+                                modeMap -> new ArrayList<>(modeMap.values())
+                        )
+                ));
+        return Result.success(result);
+    }
+
+    public Result materialStatistics() {
+        return Result.success(startStopMapper.selectMaterialStatistics());
+    }
     public Result standardChart(StartStopQueryDTO startStopQueryDTO) {
         log.info("standardChart param {}" , JSON.toJSONString(startStopQueryDTO));
         String startMode = startStopQueryDTO.getStartMode();

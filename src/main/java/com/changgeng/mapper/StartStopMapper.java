@@ -33,5 +33,11 @@ public interface StartStopMapper {
 
     List<Map> eventStatus(@Param("resultId") String resultId);
 
+    List<Map> eventReport(@Param("startTime") String startTime, @Param("endTime") String endTime, @Param("eventCode")   List<String> eventCode);
+
+    List<Map> selectEventDetailsByResultId(@Param("resultId") String resultId);
+
+    List<Map> selectMaterialStatistics();
+
     List<Map>  selectStandardChart(@Param("groupName") String groupName);
 }

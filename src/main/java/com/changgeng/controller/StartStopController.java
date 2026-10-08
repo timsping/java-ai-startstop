@@ -4,9 +4,12 @@ import com.changgeng.common.result.Result;
 import com.changgeng.model.StartStopQueryDTO;
 import com.changgeng.service.StartStopService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.Date;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/startStop")
@@ -77,11 +80,24 @@ public class StartStopController {
      * @return
      */
     @PostMapping("/event/status")
-    public Result eventStatus(@RequestParam String resultId
-    ){
+    public Result eventStatus(@RequestParam String resultId){
         return startStopService.eventStatus(resultId);
     }
 
+    @PostMapping("/event/report")
+    public Result eventReport(@RequestBody StartStopQueryDTO startStopQueryDTO){
+        return startStopService.eventReport(startStopQueryDTO);
+    }
+
+    @PostMapping("/bestRecord")
+    public Result bestRecord(@RequestParam Integer unitId){
+        return startStopService.bestRecord(unitId);
+    }
+
+    @PostMapping("/material/statistics")
+    public Result materialStatistics(){
+        return startStopService.materialStatistics();
+    }
 
     /**
      * 获取启停标准曲线
