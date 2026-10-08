@@ -32,4 +32,6 @@ public interface StartStopMapper {
     List<Map> startStopCondition(@Param("nodeId") Integer nodeId, @Param("condition") String condition);
 
     List<Map> eventStatus(@Param("resultId") String resultId);
+
+    List<Map>  selectStandardChart(@Param("groupName") String groupName);
 }

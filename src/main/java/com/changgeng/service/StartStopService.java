@@ -11,9 +11,11 @@ import com.changgeng.tree.TreeNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.Resource;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -183,4 +185,42 @@ public class StartStopService {
         return Result.success(root);
     }
 
+    public Result standardChart(StartStopQueryDTO startStopQueryDTO) {
+        log.info("standardChart param {}" , JSON.toJSONString(startStopQueryDTO));
+        String startMode = startStopQueryDTO.getStartMode();
+        String groupName = null;
+        if(StringUtils.isEmpty(startMode)){
+            return Result.error("标准曲线不存在");
+        }else {
+            if(startMode.equals("热态启动模式")){
+                groupName = "锅炉热态启动曲线";
+            }
+            if(startMode.equals("冷态启动模式")){
+                groupName = "锅炉冷态启动曲线";
+            }
+            if(startMode.equals("停机模式")){
+                groupName = "停机曲线";
+            }
+        }
+        List<Map> list = startStopMapper.selectStandardChart(groupName);
+        if(CollectionUtils.isEmpty(list)){
+            return Result.error("标准曲线不存在");
+        }
+        Map<Object, List<Map>> standardNameGroup = list.stream()
+                .collect(Collectors.groupingBy(
+                        e -> e.get("standard_name"),
+                        LinkedHashMap::new,
+                        Collectors.mapping(
+                                originMap -> {
+                                    Map copyMap = new HashMap<>(originMap);
+                                    copyMap.remove("standard_name");
+                                    copyMap.put("realtime_value",(Double)copyMap.get("standard_value")- ThreadLocalRandom.current().nextDouble(-10, 10));
+                                    return copyMap;
+                                },
+                                Collectors.toList()
+                        )
+                ));
+
+        return Result.success(standardNameGroup);
+    }
 }

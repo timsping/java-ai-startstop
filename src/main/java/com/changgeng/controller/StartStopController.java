@@ -82,5 +82,16 @@ public class StartStopController {
         return startStopService.eventStatus(resultId);
     }
 
+
+    /**
+     * 获取启停标准曲线
+     * @param startStopQueryDTO 获取启停标准曲线
+     * @return
+     */
+    @PostMapping("/standardChart")
+    public Result standardChart( @RequestBody StartStopQueryDTO startStopQueryDTO ){
+        return startStopService.standardChart(startStopQueryDTO);
+    }
+
 }
 

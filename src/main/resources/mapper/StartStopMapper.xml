@@ -154,4 +154,25 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ) t
         ORDER BY level_no, parent_result_id, result_id;
     </select>
+    <select id="selectStandardChart" resultType="java.util.Map">
+        WITH t AS (
+            SELECT
+                d.standard_value,
+                d.minutes::INTEGER AS minutes,
+                    t.standard_name,
+                t.group_name,
+                ROW_NUMBER() OVER (
+            PARTITION BY t.group_name, d.minutes
+        ) AS rn
+            FROM standard_tendency_data d
+                     LEFT JOIN standard_tendency t
+                               ON d.standard_id = t.standard_id
+            WHERE t.group_name = #{groupName}
+        )
+        SELECT standard_value, minutes, standard_name
+        FROM t
+        WHERE rn = 1
+        ORDER BY minutes;
+
+    </select>
 </mapper>
