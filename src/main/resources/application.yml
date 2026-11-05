@@ -18,6 +18,10 @@ logging:
 
 # Spring配置
 spring:
+  # application.yml
+  mvc:
+    async:
+      request-timeout: 1200000  # 单位毫秒，改成120秒
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driverClassName: org.postgresql.Driver
@@ -62,3 +66,4 @@ fastgpt:
   limit: 3000
   similarity: 0
   datasetSearchExtensionModel: Jarcgon/Qwen3.6-35B-A3B-Claude-4.7-Opus-abliterated-uncenfull
+

@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
-@RestControllerAdvice // 拦截所有 RestController 的异常
+//@RestControllerAdvice // 拦截所有 RestController 的异常
 public class GlobalExceptionHandler {
 
     // 1. 捕获自定义的业务异常
